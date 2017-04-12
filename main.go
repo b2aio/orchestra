@@ -6,11 +6,10 @@ import (
 	"path"
 	"path/filepath"
 
-	log "github.com/cihub/seelog"
 	"github.com/codegangsta/cli"
-	"github.com/monzo/orchestra/commands"
-	"github.com/monzo/orchestra/config"
-	"github.com/monzo/orchestra/services"
+	"github.com/gophersgang/orchestra/commands"
+	"github.com/gophersgang/orchestra/config"
+	"github.com/gophersgang/orchestra/services"
 )
 
 var app *cli.App
@@ -18,7 +17,6 @@ var app *cli.App
 const defaultConfigFile = "orchestra.yml"
 
 func main() {
-	defer log.Flush()
 	app = cli.NewApp()
 	app.Name = "Orchestra"
 	app.Usage = "Orchestrate Go Services"
@@ -41,6 +39,11 @@ func main() {
 			Usage:  "Specify a different config file to use",
 			EnvVar: "ORCHESTRA_CONFIG",
 		},
+		cli.BoolFlag{
+			Name:   "debug, d",
+			Usage:  "Should we log in verbose mode?",
+			EnvVar: "ORCHESTRA_DEBUG",
+		},
 	}
 	// init checks for an existing orchestra.yml in the current working directory
 	// and creates a new .orchestra directory (if doesn't exist)
@@ -57,6 +60,13 @@ func main() {
 		}
 		services.ProjectPath, _ = path.Split(config.ConfigPath)
 		services.OrchestraServicePath = services.ProjectPath + ".orchestra"
+
+		debug := c.GlobalBool("debug")
+		if debug {
+			config.VerboseModeOn()
+		} else {
+			config.VerboseModeOff()
+		}
 
 		if err := os.Mkdir(services.OrchestraServicePath, 0766); err != nil && os.IsNotExist(err) {
 			fmt.Println(err.Error())

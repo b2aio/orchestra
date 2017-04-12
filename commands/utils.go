@@ -3,18 +3,20 @@ package commands
 import (
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
-	log "github.com/cihub/seelog"
 	"github.com/codegangsta/cli"
-	"github.com/monzo/orchestra/config"
-	"github.com/monzo/orchestra/services"
+	"github.com/gophersgang/orchestra/config"
+	"github.com/gophersgang/orchestra/services"
 )
 
 // niceness used for subprocesses
 // https://en.wikipedia.org/wiki/Nice_(Unix)
 const niceness = "1"
+
+var (
+	logger = config.Logger
+)
 
 // This is temporary, very very alpha and may change soon
 func FilterServices(c *cli.Context) map[string]*services.Service {
@@ -33,13 +35,12 @@ func FilterServices(c *cli.Context) map[string]*services.Service {
 				excludeMode -= 1
 			}
 		} else {
-			log.Errorf("Service %s not found", s)
+			logger.Printf("error: Service %s not found", s)
 			return nil
 		}
 	}
 	if math.Abs(float64(excludeMode)) != float64(len(args)) {
-		log.Critical("You can't exclude and include services at the same time")
-		os.Exit(1)
+		logger.Fatalln("You can't exclude and include services at the same time")
 	}
 	if excludeMode < 0 {
 		for name := range services.Registry {

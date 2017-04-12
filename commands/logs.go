@@ -8,7 +8,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/codegangsta/cli"
 	"github.com/hpcloud/tail"
-	"github.com/monzo/orchestra/services"
+	"github.com/gophersgang/orchestra/services"
 	"github.com/wsxiaoys/terminal"
 )
 

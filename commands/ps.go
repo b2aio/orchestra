@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/codegangsta/cli"
-	"github.com/monzo/orchestra/services"
+	"github.com/gophersgang/orchestra/services"
 	"github.com/wsxiaoys/terminal"
 )
 

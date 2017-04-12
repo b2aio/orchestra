@@ -9,14 +9,17 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/gophersgang/orchestra/config"
+
 	"go/build"
 
-	"gopkg.in/yaml.v1"
+	"path/filepath"
 
-	log "github.com/cihub/seelog"
+	"gopkg.in/yaml.v1"
 )
 
 var (
+	log = config.Logger
 	// Internal Service Registry
 	Registry map[string]*Service
 
@@ -107,8 +110,14 @@ func (s *Service) IsRunning() bool {
 // for the service.yml file. For every service it registers it after trying
 // to import the package using Go's build.Import package
 func DiscoverServices() {
-	gopath := strings.TrimRight(os.Getenv("GOPATH"), "/")
-	buildPath := strings.Replace(ProjectPath, gopath+"/src/", "", 1)
+	log.Println("debug: DiscoverServices started...")
+	properGoPath, _ := GetProperGopath(ProjectPath, os.Getenv("GOPATH"))
+	buildPath := strings.Replace(ProjectPath, filepath.Join(properGoPath, "src")+"/", "", 1)
+
+	log.Printf("debug: proper gopath %s", properGoPath)
+	log.Printf("debug: projectpath: %s", ProjectPath)
+	log.Printf("debug: buildPath %s", buildPath)
+
 	fd, _ := ioutil.ReadDir(ProjectPath)
 	for _, item := range fd {
 		serviceName := item.Name()
@@ -118,8 +127,8 @@ func DiscoverServices() {
 				// Check for service.yml and try to import the package
 				pkg, err := build.Import(fmt.Sprintf("%s/%s", buildPath, serviceName), "srcDir", 0)
 				if err != nil {
-					log.Errorf("Error registering %s", item.Name())
-					log.Error(err.Error())
+					log.Printf("error: Error registering %s", item.Name())
+					log.Printf("error: %s", err.Error())
 					continue
 				}
 
@@ -140,8 +149,7 @@ func DiscoverServices() {
 				}
 				b, err := ioutil.ReadFile(serviceConfigPath)
 				if err != nil {
-					log.Criticalf(err.Error())
-					os.Exit(1)
+					log.Fatal(err.Error())
 				}
 				yaml.Unmarshal(b, &serviceConfig)
 				for k, v := range serviceConfig.Env {
@@ -153,11 +161,7 @@ func DiscoverServices() {
 					MaxServiceNameLength = len(serviceName)
 				}
 
-				if binPath := os.Getenv("GOBIN"); binPath != "" {
-					service.BinPath = fmt.Sprintf("%s/%s", binPath, serviceName)
-				} else {
-					service.BinPath = fmt.Sprintf("%s/bin/%s", os.Getenv("GOPATH"), serviceName)
-				}
+				service.BinPath = getProperBinPath(serviceName)
 
 				// Add the service to the registry
 				Registry[serviceName] = service
@@ -167,4 +171,25 @@ func DiscoverServices() {
 			}
 		}
 	}
+}
+
+func getProperBinPath(serviceName string) string {
+	var binPath string
+	if gobin := os.Getenv("GOBIN"); gobin != "" {
+		binPath = fmt.Sprintf("%s/%s", gobin, serviceName)
+	} else {
+		binPath = fmt.Sprintf("%s/bin/%s", os.Getenv("GOPATH"), serviceName)
+	}
+	return binPath
+}
+
+// GetProperGopath deals with possible multiple folders in GOPATH env variable and picks the most fitting one
+func GetProperGopath(projectPath string, envGopath string) (string, error) {
+	parts := strings.Split(envGopath, ":")
+	for _, part := range parts {
+		if strings.Contains(projectPath, part) {
+			return part, nil
+		}
+	}
+	return "", fmt.Errorf("projectPath not in any of GOPATH folders! GOPATH: %s, projectPath: %s", envGopath, projectPath)
 }

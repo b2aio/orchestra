@@ -3,19 +3,25 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
 
-	"github.com/cihub/seelog"
 	"github.com/codegangsta/cli"
+	"github.com/comail/colog"
 	"gopkg.in/yaml.v2"
 )
 
 var orchestra *Config
 var ConfigPath string
 var globalEnvs []string
+
+// Logger is a logger
+var Logger *log.Logger
+
+var loggerBackend *colog.CoLog
 
 type ContextConfig struct {
 	Env    map[string]string `env,omitempty`
@@ -42,6 +48,21 @@ type Config struct {
 	Test    ContextConfig `test,omitempty`
 }
 
+func init() {
+	loggerBackend = colog.NewCoLog(os.Stdout, "", 0)
+	loggerBackend.SetMinLevel(colog.LDebug)
+	loggerBackend.SetDefaultLevel(colog.LDebug)
+	Logger = loggerBackend.NewLogger()
+}
+
+func VerboseModeOn() {
+	loggerBackend.SetMinLevel(colog.LDebug)
+}
+
+func VerboseModeOff() {
+	loggerBackend.SetMinLevel(colog.LInfo)
+}
+
 func GetBaseEnvVars() map[string]string {
 	return orchestra.Env
 }
@@ -54,7 +75,7 @@ func ParseGlobalConfig() {
 	orchestra = &Config{}
 	b, err := ioutil.ReadFile(ConfigPath)
 	if err != nil {
-		seelog.Criticalf(err.Error())
+		Logger.Fatalf(err.Error())
 		os.Exit(1)
 	}
 	yaml.Unmarshal(b, &orchestra)
